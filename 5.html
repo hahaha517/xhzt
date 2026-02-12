@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星火·征途 - 红色文旅数字化赋能平台</title>
+    <!-- 外部依赖库 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <!-- 自定义样式 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            /* 主题色 */
+            .bg-star-night { background: linear-gradient(180deg, #0A0A1A 0%, #200808 100%); }
+            .text-star-light { color: #FFE4B5; text-shadow: 0 0 10px rgba(255, 228, 181, 0.8); }
+            .bg-dark-red { background-color: #8B0000; } /* 深红色主色 */
+            .bg-deeper-red { background-color: #700000; } /* 更深的红色，用于导航栏 */
+            .hover-bg-red-700:hover { background-color: #B22222; }
+            
+            /* 动效类 */
+            .pulse-line::after {
+                content: '';
+                position: absolute;
+                top: 0; left: -100%;
+                width: 100%; height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                animation: pulse 2s infinite;
+            }
+            @keyframes pulse { to { left: 100%; } }
+            .float-up { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+            .float-up:hover { transform: translateY(-8px); box-shadow: 0 12px 20px rgba(0, 0, 0, 0.2); }
+            .breath { animation: breath 3s infinite ease-in-out; }
+            @keyframes breath {
+                0%, 100% { opacity: 0.8; transform: scale(1); }
+                50% { opacity: 1; transform: scale(1.05); }
+            }
+            .scroll-screen {
+                height: 100vh; width: 100%;
+                display: flex; flex-direction: column;
+                justify-content: center; align-items: center;
+                padding: 0 20px; color: white;
+                position: relative; overflow: hidden;
+            }
+            .fixed-dashboard {
+                position: sticky; top: 0; z-index: 40;
+                background: rgba(10, 10, 26, 0.95); backdrop-filter: blur(8px);
+            }
+            .need-upload {
+                border: 2px dashed #ff4444 !important; position: relative;
+            }
+            .need-upload::after {
+                content: '【需上传真实素材】'; position: absolute;
+                top: 50%; left: 50%; transform: translate(-50%, -50%);
+                background: #ff4444; color: white; padding: 2px 8px;
+                font-size: 12px; border-radius: 4px; z-index: 10;
+            }
+
+            /* 全局优化样式 */
+            .nav-btn { position: relative; transition: all 0.3s ease; }
+            .nav-btn.nav-active::after {
+                content: ''; position: absolute; bottom: -2px; left: 0;
+                width: 100%; height: 2px; background-color: #ff4444;
+                transition: all 0.3s ease;
+            }
+            .img-hover { transition: all 0.3s ease; cursor: pointer; }
+            .img-hover:hover {
+                transform: scale(1.03);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+            input:focus, select:focus, textarea:focus {
+                outline: none; border-color: #ff4444;
+                box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.2);
+            }
+            .card-3d { perspective: 1000px; transition: all 0.5s ease; }
+            .card-3d:hover { transform: translateY(-5px); }
+            .card-3d .front, .card-3d .back {
+                position: absolute; width: 100%; height: 100%;
+                backface-visibility: hidden; border-radius: 8px;
+                display: flex; align-items: center; justify-content: center;
+                transition: transform 0.6s ease;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+            .card-3d .front { background-color: white; z-index: 2; }
+            .card-3d .back {
+                background-color: #f8d7da; transform: rotateY(180deg);
+            }
+            .card-3d:hover .front { transform: rotateY(180deg); }
+            .card-3d:hover .back { transform: rotateY(360deg); }
+        }
+    </style>
+</head>
+<body class="font-sans text-white m-0 p-0">
+    <!-- 页面标题栏（固定顶部，设置固定高度消除缝隙） -->
+    <div class="page-title-bar fixed top-0 left-0 w-full z-50 bg-star-night py-3 text-center h-12">
+        <h1 class="text-xl font-bold text-star-light m-0" id="main-page-title">星火·征途 - 红色文旅数字化赋能平台</h1>
+    </div>
+
+    <!-- 导航栏（top-12 与标题栏高度匹配，消除缝隙） -->
+    <nav class="fixed top-12 left-0 w-full bg-deeper-red text-white shadow-lg z-30">
+        <div class="container mx-auto px-4 py-3 flex flex-wrap gap-2 justify-center">
+            <button onclick="switchPage('index')" class="nav-btn px-4 py-2 rounded hover-bg-red-700 nav-active">首页·征途启航</button>
+            <button onclick="switchPage('match')" class="nav-btn px-4 py-2 rounded hover-bg-red-700">智能匹配·精准定制</button>
+            <button onclick="switchPage('saas')" class="nav-btn px-4 py-2 rounded hover-bg-red-700">供给端SaaS工作台</button>
+            <button onclick="switchPage('xr')" class="nav-btn px-4 py-2 rounded hover-bg-red-700">XR体验·沉浸种草</button>
+            <button onclick="switchPage('data')" class="nav-btn px-4 py-2 rounded hover-bg-red-700">产业数据·红色智库</button>
+            <button onclick="switchPage('archive')" class="nav-btn px-4 py-2 rounded hover-bg-red-700">红色足迹·育人闭环</button>
+        </div>
+    </nav>
+
+    <!-- 页面容器（pt-20 适配导航栏新高度） -->
+    <div class="min-h-screen pt-20">
+        <!-- 1. 首页 · 征途启航（完全保留） -->
+        <div id="index-page" class="page-content block">
+            <!-- 第一幕：点火 -->
+            <div id="screen-1" class="scroll-screen bg-star-night">
+                <div id="particles-js" class="absolute inset-0 z-0"></div>
+                <div class="z-10 text-center">
+                    <h1 class="text-[clamp(2.5rem,5vw,4rem)] font-bold text-star-light mb-4">🔥 星火 · 征途</h1>
+                    <p class="text-[clamp(1rem,2vw,1.5rem)] mb-8">红色文旅数字化赋能平台</p>
+                    <p class="text-[clamp(1rem,2vw,1.2rem)] mb-12 max-w-2xl mx-auto">"连接每一处红色资源，点亮每一段征途"</p>
+                    <div class="flex gap-4 justify-center">
+                        <button class="px-6 py-3 bg-dark-red rounded breath hover-bg-red-700">开始探索</button>
+                        <button class="px-6 py-3 bg-transparent border border-white rounded hover:bg-white/10 transition">观看宣传片</button>
+                    </div>
+                    <p class="mt-12 text-sm opacity-70">↓ 滚动继续</p>
+                </div>
+            </div>
+
+            <!-- 第二幕：连接 -->
+            <div id="screen-2" class="scroll-screen bg-star-night">
+                <div class="z-10 w-full max-w-4xl mx-auto">
+                    <div class="grid grid-cols-2 gap-8 mb-12">
+                        <div class="text-center" id="supply-side">
+                            <h3 class="text-xl font-bold mb-4">供给端</h3>
+                            <div class="flex flex-col gap-3">
+                                <div class="p-2 rounded hover:bg-white/10 transition">🏛️ 红色场馆</div>
+                                <div class="p-2 rounded hover:bg-white/10 transition">🎮 XR服务商</div>
+                                <div class="p-2 rounded hover:bg-white/10 transition">📖 党史讲师</div>
+                            </div>
+                        </div>
+                        <div class="text-center" id="demand-side">
+                            <h3 class="text-xl font-bold mb-4">需求端</h3>
+                            <div class="flex flex-col gap-3">
+                                <div class="p-2 rounded hover:bg-white/10 transition">🏫 学校研学</div>
+                                <div class="p-2 rounded hover:bg-white/10 transition">🏢 企业党建</div>
+                                <div class="p-2 rounded hover:bg-white/10 transition">👪 家庭体验</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <div class="inline-block relative">
+                            <div class="absolute -top-8 left-1/2 -translate-x-1/2 text-sm opacity-70">↙️ 产业路由器 ↘️</div>
+                            <p class="text-xl font-bold pulse-line py-2 px-8 border-b-2 border-red-500">"供需匹配 · 价值共生"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第三幕：沉浸 -->
+            <div id="screen-3" class="scroll-screen bg-star-night">
+                <div class="z-10 text-center max-w-4xl mx-auto">
+                    <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-6">🎮 XR重走长征路</h2>
+                    <p class="text-lg mb-8">湘江 · 赤水 · 泸定 · 雪山 · 草地</p>
+                    <!-- 【需替换为真实照片】XR场景预览图 - 建议尺寸：800x300px（需实拍/渲染的XR长征路场景图） -->
+                    <div id="xr-scene-preview" class="w-full max-w-lg h-60 border-2 border-red-500/50 rounded-lg mb-8 flex items-center justify-center cursor-move hover:border-red-500 transition need-upload">
+                        <p class="text-white/80">[ 拖拽360°预览场景 ]</p>
+                    </div>
+                    <div class="flex justify-center gap-8 text-lg">
+                        <p>已服务研学团队 <span class="font-bold text-star-light" id="team-count">340</span>+</p>
+                        <p>满意度 <span class="font-bold text-star-light">98.6%</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第四幕：星海 -->
+            <div id="screen-4" class="scroll-screen bg-star-night">
+                <div class="z-10 text-center max-w-4xl mx-auto">
+                    <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-8">全国合作版图（动态热力）</h2>
+                    <!-- 【需替换为真实可视化图】全国红色文旅热力地图 - 建议尺寸：800x300px（需基于真实数据生成的热力图） -->
+                    <div class="w-full h-60 border border-white/20 rounded-lg mb-8 flex items-center justify-center mb-12 need-upload">
+                        <div class="w-full h-full flex items-center justify-center relative">
+                            <p class="text-white/80">中国地图热力图（光点呼吸闪烁）</p>
+                            <div class="absolute top-1/4 left-1/4 w-2 h-2 bg-red-500 rounded-full breath"></div>
+                            <div class="absolute top-1/3 right-1/3 w-2 h-2 bg-red-500 rounded-full breath" style="animation-delay: 0.5s"></div>
+                            <div class="absolute bottom-1/4 left-1/3 w-2 h-2 bg-red-500 rounded-full breath" style="animation-delay: 1s"></div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-6 mb-12">
+                        <div>
+                            <p class="text-sm opacity-70 mb-2">已入驻红色场馆</p>
+                            <p class="text-2xl font-bold text-star-light" id="venue-count">128</p>
+                            <p class="text-sm">家</p>
+                        </div>
+                        <div>
+                            <p class="text-sm opacity-70 mb-2">累计匹配订单</p>
+                            <p class="text-2xl font-bold text-star-light" id="order-count">2,340</p>
+                            <p class="text-sm">单</p>
+                        </div>
+                        <div>
+                            <p class="text-sm opacity-70 mb-2">覆盖研学人次</p>
+                            <p class="text-2xl font-bold text-star-light" id="people-count">15.6</p>
+                            <p class="text-sm">万</p>
+                        </div>
+                    </div>
+                    <p class="text-xl mb-8">"让红色资源不再沉睡"</p>
+                    <div class="flex gap-4 justify-center">
+                        <button class="px-6 py-3 bg-dark-red rounded breath hover-bg-red-700">立即发布需求</button>
+                        <button class="px-6 py-3 bg-transparent border border-white rounded hover:bg-white/10 transition">成为供给方</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 全域态势数字看板 -->
+            <div class="fixed-dashboard py-4 px-6">
+                <div class="container mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <p class="text-sm opacity-70">今日研学人次</p>
+                        <p class="text-xl font-bold text-star-light">1.2w <span class="text-sm text-green-400">↑12%</span></p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-sm opacity-70">XR体验场次</p>
+                        <p class="text-xl font-bold text-star-light">340 <span class="text-sm text-green-400">↑8%</span></p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-sm opacity-70">供需匹配成功</p>
+                        <p class="text-xl font-bold text-star-light">86单 <span class="text-sm text-green-400">↑21%</span></p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-sm opacity-70">入驻资源方</p>
+                        <p class="text-xl font-bold text-star-light">128家 <span class="text-sm text-green-400">↑15%</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 双轮快捷入口（补充「我要红色研学/党建」下方内容） -->
+            <div class="bg-star-night pt-24 pb-16 px-6">
+                <div class="container mx-auto max-w-5xl">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="bg-dark-red rounded-xl p-8 text-center float-up relative overflow-hidden">
+                            <div class="z-10">
+                                <h3 class="text-2xl font-bold mb-4">我要红色研学/党建</h3>
+                                <button class="px-6 py-3 bg-white text-dark-red rounded hover:bg-white/90 transition">发布需求</button>
+                                <!-- 补充下方内容 -->
+                                <p class="mt-4 text-white/80 text-sm">覆盖全国128+红色场馆，3分钟生成专属研学方案</p>
+                                <p class="mt-2 text-white/80 text-sm">支持中小学研学、企业党建、政府主题活动定制</p>
+                                <p class="mt-2 text-white/80 text-sm">含XR体验、实地讲解、知识考核全流程服务</p>
+                            </div>
+                            <div class="absolute top-0 right-0 w-full h-full opacity-20">
+                                <div class="absolute top-1/2 right-0 w-32 h-32 bg-white rounded-full blur-3xl"></div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-800 rounded-xl p-8 text-center float-up relative overflow-hidden">
+                            <div class="z-10">
+                                <h3 class="text-2xl font-bold mb-4">我是资源方/场馆</h3>
+                                <button class="px-6 py-3 bg-white text-gray-800 rounded hover:bg-white/90 transition">入驻平台</button>
+                                <!-- 补充对应内容 -->
+                                <p class="mt-4 text-white/80 text-sm">零代码SaaS管理系统，一键上架XR场景/讲解服务</p>
+                                <p class="mt-2 text-white/80 text-sm">获取精准客源，数字化运营提升接待效率30%</p>
+                                <p class="mt-2 text-white/80 text-sm">接入全国红色文旅数据智库，掌握行业趋势</p>
+                            </div>
+                            <div class="absolute top-0 left-0 w-full h-full opacity-20">
+                                <div class="absolute top-1/2 left-0 w-32 h-32 bg-white rounded-full blur-3xl"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 标杆案例墙 -->
+            <div class="bg-star-night py-16 px-6">
+                <div class="container mx-auto max-w-5xl">
+                    <h2 class="text-2xl font-bold text-center mb-12">标杆案例墙</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- 【需替换为真实照片】天津长征XR馆案例图 - 建议尺寸：400x300px（需实拍场馆/体验场景） -->
+                        <div class="bg-white/5 rounded-xl p-6 float-up need-upload">
+                            <h3 class="text-xl font-bold mb-2">天津长征XR馆</h3>
+                            <p class="text-white/70 mb-4">已服务1.2万人次 · 复购率34%</p>
+                            <div class="w-full h-1 bg-red-500/30 rounded-full">
+                                <div class="w-[34%] h-1 bg-red-500 rounded-full breath"></div>
+                            </div>
+                        </div>
+                        <!-- 【需替换为真实照片】井冈山研学基地案例图 - 建议尺寸：400x300px（需实拍研学场景） -->
+                        <div class="bg-white/5 rounded-xl p-6 float-up need-upload">
+                            <h3 class="text-xl font-bold mb-2">井冈山研学基地</h3>
+                            <p class="text-white/70 mb-4">已服务0.9万人次 · 复购率41%</p>
+                            <div class="w-full h-1 bg-red-500/30 rounded-full">
+                                <div class="w-[41%] h-1 bg-red-500 rounded-full breath"></div>
+                            </div>
+                        </div>
+                        <!-- 【需替换为真实照片】延安红街案例图 - 建议尺寸：400x300px（需实拍红街/体验场景） -->
+                        <div class="bg-white/5 rounded-xl p-6 float-up need-upload">
+                            <h3 class="text-xl font-bold mb-2">延安红街</h3>
+                            <p class="text-white/70 mb-4">已服务2.1万人次 · 复购率29%</p>
+                            <div class="w-full h-1 bg-red-500/30 rounded-full">
+                                <div class="w-[29%] h-1 bg-red-500 rounded-full breath"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 平台价值主张 -->
+            <div class="bg-star-night py-16 px-6 text-center">
+                <div class="container mx-auto max-w-3xl">
+                    <hr class="border-white/20 mb-8">
+                    <p class="text-xl mb-6">"不止是交易平台，<br>更是红色文化的数字化传承者、<br>产业升级的赋能合伙人。"</p>
+                    <p class="text-white/70">—— 星火·征途 团队</p>
+                    <hr class="border-white/20 mt-8">
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 智能匹配页 · 精准定制 -->
+        <div id="match-page" class="page-content hidden bg-slate-50 text-gray-800">
+            <div class="container mx-auto px-4 py-8 pt-20">
+                <h1 class="text-3xl font-bold text-red-800 mb-6">智能匹配 · 3分钟生成研学方案</h1>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- 左侧需求问卷 -->
+                    <div class="bg-white p-6 rounded shadow">
+                        <h2 class="text-xl font-bold mb-4">需求填写（共6步）</h2>
+                        <form id="demand-form">
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">1. 需求方类型</label>
+                                <select id="user-type" class="w-full p-2 border border-gray-300 rounded" onchange="updatePackage()">
+                                    <option value="">请选择</option>
+                                    <option value="school">中小学</option>
+                                    <option value="enterprise">企业</option>
+                                    <option value="gov">政府/事业单位</option>
+                                </select>
+                            </div>
+                            <!-- 新增：活动地区选择 -->
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">2. 活动地区</label>
+                                <select id="activity-area" class="w-full p-2 border border-gray-300 rounded" onchange="updatePackage()">
+                                    <option value="">请选择</option>
+                                    <option value="beijing">北京</option>
+                                    <option value="shanghai">上海</option>
+                                    <option value="guangdong">广东</option>
+                                    <option value="jiangxi">江西</option>
+                                    <option value="guizhou">贵州</option>
+                                    <option value="sichuan">四川</option>
+                                    <option value="shaanxi">陕西</option>
+                                    <option value="zhejiang">浙江</option>
+                                </select>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">3. 参与人数</label>
+                                <input type="number" id="people-count-input" class="w-full p-2 border border-gray-300 rounded" oninput="updatePackage()" placeholder="例如：200">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">4. 体验时长</label>
+                                <select id="duration" class="w-full p-2 border border-gray-300 rounded" onchange="updatePackage()">
+                                    <option value="">请选择</option>
+                                    <option value="1">1小时内</option>
+                                    <option value="2">1-3小时</option>
+                                    <option value="3">半天</option>
+                                    <option value="4">全天</option>
+                                </select>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">5. 预算范围（元/人）</label>
+                                <input type="number" id="budget" class="w-full p-2 border border-gray-300 rounded" oninput="updatePackage()" placeholder="例如：50">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">6. 核心需求</label>
+                                <textarea id="core-demand" class="w-full p-2 border border-gray-300 rounded" oninput="updatePackage()" placeholder="例如：重走长征路、红色故事讲解..."></textarea>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 右侧推荐套餐 -->
+                    <div class="bg-white p-6 rounded shadow">
+                        <h2 class="text-xl font-bold mb-4">推荐套餐</h2>
+                        <div id="package-card" class="border-2 border-red-500 p-4 rounded-lg animate-pulse">
+                            <h3 class="font-bold text-lg text-red-800" id="package-name">未匹配到套餐</h3>
+                            <p class="mt-2" id="package-desc">请填写左侧需求信息，实时生成匹配方案</p>
+                            <p class="mt-2 font-bold" id="package-price">预估费用：--</p>
+                            <div class="mt-4 text-sm text-gray-500">
+                                <p>匹配度：<span id="match-rate">0%</span></p>
+                                <p>方案生成耗时：<span id="gen-time">0</span>秒</p>
+                            </div>
+                        </div>
+                        <button id="gen-pdf" class="w-full mt-6 bg-red-800 text-white py-2 rounded hover-bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                            一键生成PDF方案
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 供给端SaaS工作台 · 场馆赋能 -->
+        <div id="saas-page" class="page-content hidden bg-slate-50 text-gray-800">
+            <div class="container mx-auto px-4 py-8 pt-20">
+                <h1 class="text-3xl font-bold text-red-800 mb-6">供给端SaaS工作台 · 零代码数字化管理</h1>
+                
+                <!-- 运营驾驶舱 -->
+                <div class="bg-white p-6 rounded shadow mb-8">
+                    <h2 class="text-xl font-bold mb-4">运营驾驶舱</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="p-3 border rounded bg-red-50">今日订单：<span class="font-bold">12</span></div>
+                        <div class="p-3 border rounded bg-red-50">本月营收：<span class="font-bold">¥89,500</span></div>
+                        <div class="p-3 border rounded bg-red-50">数字人接待量：<span class="font-bold">320</span>人次</div>
+                        <div class="p-3 border rounded bg-red-50">场景使用次数：<span class="font-bold">156</span>次</div>
+                    </div>
+                </div>
+
+                <!-- XR场景管理 -->
+                <div class="bg-white p-6 rounded shadow mb-8">
+                    <h2 class="text-xl font-bold mb-4">XR场景管理</h2>
+                    <div id="xr-upload" class="border-2 border-dashed border-gray-300 p-8 rounded text-center cursor-pointer hover:border-red-500 transition">
+                        <p class="text-gray-500">拖拽上传Unity场景包（.zip/.unitypackage）</p>
+                        <input type="file" class="hidden" id="scene-upload">
+                    </div>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="p-3 border rounded">重走长征路 v1.0</div>
+                        <div class="p-3 border rounded">红色故事讲解 v2.1</div>
+                        <div class="p-3 border rounded">革命纪念馆漫游 v1.5</div>
+                    </div>
+                </div>
+
+                <!-- 数字人配置间 -->
+                <div class="bg-white p-6 rounded shadow mb-8">
+                    <h2 class="text-xl font-bold mb-4">数字人配置间</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">输入讲解文本（实时驱动口型）</label>
+                            <textarea class="w-full p-2 border border-gray-300 rounded" placeholder="例如：欢迎来到XX革命纪念馆，接下来由我为您讲解..."></textarea>
+                        </div>
+                        <div class="border rounded p-4 flex items-center justify-center">
+                            <!-- 【需替换为真实照片】数字人预览图 - 建议尺寸：300x200px（需实拍/渲染的红色讲解数字人） -->
+                            <img src="https://picsum.photos/300/200?1" alt="数字人预览" class="rounded img-hover need-upload">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 订单接待看板 -->
+                <div class="bg-white p-6 rounded shadow">
+                    <h2 class="text-xl font-bold mb-4">订单接待看板</h2>
+                    <div id="schedule-board" class="border rounded p-4 h-60 overflow-y-auto">
+                        <p class="text-gray-500">拖拽调整接待场次（示例）：</p>
+                        <div class="mt-2 p-2 bg-red-100 rounded mb-2 cursor-move">09:00-10:00 | 某小学 | 50人</div>
+                        <div class="mt-2 p-2 bg-red-100 rounded mb-2 cursor-move">10:30-11:30 | 某企业 | 30人</div>
+                        <div class="mt-2 p-2 bg-red-100 rounded mb-2 cursor-move">14:00-15:00 | 某社区 | 20人</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. XR体验详情页 · 沉浸种草 -->
+        <div id="xr-page" class="page-content hidden bg-slate-50 text-gray-800">
+            <!-- 全屏视频 -->
+            <div class="w-full h-[50vh] relative bg-black" id="xr-video-container">
+                <!-- 【需替换为真实视频】XR体验宣传视频 - 建议格式：mp4，尺寸：1200x600px（需实拍XR体验过程/宣传片） -->
+                <!-- 注：需将img标签替换为video标签，示例：<video src="你的视频路径.mp4" autoplay loop muted class="w-full h-full object-cover opacity-80"></video> -->
+                <img src="https://picsum.photos/1200/600?2" alt="XR体验宣传封面" class="w-full h-full object-cover opacity-80 img-hover need-upload">
+                <div class="absolute inset-0 flex items-center justify-center text-white text-2xl bg-black/30">
+                    【全屏XR体验视频】重走长征路 - 沉浸式红色教育
+                </div>
+                <button class="absolute bottom-4 right-4 bg-red-800 text-white px-4 py-2 rounded" onclick="shrinkVideo()">
+                    缩小视频
+                </button>
+            </div>
+
+            <!-- 悬浮窗 -->
+            <div id="video-float" class="fixed bottom-4 right-4 w-64 h-40 bg-black rounded shadow-lg hidden">
+                <!-- 【需替换为真实视频缩略图】XR体验悬浮缩略图 - 建议尺寸：240x160px（需截取视频关键帧/实拍图） -->
+                <img src="https://picsum.photos/240/160?3" alt="XR体验悬浮缩略图" class="w-full h-full object-cover img-hover need-upload">
+            </div>
+
+            <!-- 版本对比 + 证书 + 热力图 -->
+            <div class="container mx-auto px-4 py-8 pt-20">
+                <h2 class="text-2xl font-bold text-red-800 mb-6">XR体验版本对比</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded shadow hover:shadow-lg transition">
+                        <h3 class="font-bold text-lg">基础版</h3>
+                        <p class="mt-2 text-sm">适配普通PC端</p>
+                        <p class="mt-1 text-sm">5个核心场景</p>
+                        <p class="mt-1 text-sm font-bold text-red-800">¥1980/年</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow hover:shadow-lg transition border-2 border-red-500">
+                        <h3 class="font-bold text-lg">标准版</h3>
+                        <p class="mt-2 text-sm">适配VR设备</p>
+                        <p class="mt-1 text-sm">10个核心场景 + 数字人讲解</p>
+                        <p class="mt-1 text-sm font-bold text-red-800">¥4980/年</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow hover:shadow-lg transition">
+                        <h3 class="font-bold text-lg">定制版</h3>
+                        <p class="mt-2 text-sm">全设备适配</p>
+                        <p class="mt-1 text-sm">自定义场景 + 专属数字人</p>
+                        <p class="mt-1 text-sm font-bold text-red-800">¥9980/年起</p>
+                    </div>
+                </div>
+
+                <!-- 权威证书 -->
+                <h2 class="text-2xl font-bold text-red-800 mt-8 mb-4">权威证书与资质</h2>
+                <div id="cert-wall" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- 【需替换为真实照片】证书1 - 建议尺寸：200x250px（需实拍平台/产品相关资质证书） -->
+                    <div class="bg-white p-2 rounded shadow" onhammerpinch="zoomCert(event)">
+                        <img src="https://picsum.photos/200/250?4" alt="证书1" class="w-full rounded img-hover need-upload">
+                    </div>
+                    <!-- 【需替换为真实照片】证书2 - 建议尺寸：200x250px（需实拍平台/产品相关资质证书） -->
+                    <div class="bg-white p-2 rounded shadow" onhammerpinch="zoomCert(event)">
+                        <img src="https://picsum.photos/200/251?5" alt="证书2" class="w-full rounded img-hover need-upload">
+                    </div>
+                    <!-- 【需替换为真实照片】证书3 - 建议尺寸：200x250px（需实拍平台/产品相关资质证书） -->
+                    <div class="bg-white p-2 rounded shadow" onhammerpinch="zoomCert(event)">
+                        <img src="https://picsum.photos/200/252?6" alt="证书3" class="w-full rounded img-hover need-upload">
+                    </div>
+                    <!-- 【需替换为真实照片】证书4 - 建议尺寸：200x250px（需实拍平台/产品相关资质证书） -->
+                    <div class="bg-white p-2 rounded shadow" onhammerpinch="zoomCert(event)">
+                        <img src="https://picsum.photos/200/253?7" alt="证书4" class="w-full rounded img-hover need-upload">
+                    </div>
+                </div>
+
+                <!-- 预约热力图 -->
+                <h2 class="text-2xl font-bold text-red-800 mt-8 mb-4">预约热力图</h2>
+                <div id="heat-map" class="bg-white p-4 rounded shadow h-[300px] flex items-center justify-center cursor-pointer" onclick="fillDate()">
+                    <!-- 【需替换为真实可视化图】预约热力图 - 建议尺寸：800x300px（需基于真实预约数据生成的热力图） -->
+                    <img src="https://picsum.photos/800/300?8" alt="预约热力图" class="w-full h-full object-cover rounded img-hover need-upload">
+                </div>
+                <div class="mt-4">
+                    <label class="block text-gray-700 mb-2">预约日期</label>
+                    <input type="date" id="reserve-date" class="p-2 border rounded w-64">
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. 产业数据仪表盘 · 红色智库 -->
+        <div id="data-page" class="page-content hidden bg-slate-50 text-gray-800">
+            <div class="container mx-auto px-4 py-8 pt-20">
+                <h1 class="text-3xl font-bold text-red-800 mb-6">产业数据仪表盘 · 红色文旅数字智库</h1>
+                
+                <!-- 全国供需热力地图（ECharts渲染，无需替换图片） -->
+                <div class="bg-white p-6 rounded shadow mb-8">
+                    <h2 class="text-xl font-bold mb-4">全国供需热力地图 <span id="time-axis-text" class="text-sm font-normal text-gray-600">2024</span></h2>
+                    <div class="flex items-center mb-4">
+                        <input type="range" id="time-axis" min="2024" max="2026" value="2024" step="1" class="w-full" oninput="updateMap(this.value)">
+                        <span class="ml-4 text-gray-700" id="time-value">2024</span>
+                    </div>
+                    <div id="heat-map-container" class="w-full h-[400px] border rounded"></div>
+                </div>
+
+                <!-- 研学效果对比柱状图（ECharts渲染，无需替换图片） -->
+                <div class="bg-white p-6 rounded shadow mb-8">
+                    <h2 class="text-xl font-bold mb-4">研学效果对比柱状图</h2>
+                    <div id="bar-chart" class="w-full h-[300px] border rounded"></div>
+                </div>
+
+                <!-- 定制报告生成器 -->
+                <div class="bg-white p-6 rounded shadow">
+                    <h2 class="text-xl font-bold mb-4">定制报告生成器</h2>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">报告类型</label>
+                        <select class="w-full p-2 border border-gray-300 rounded">
+                            <option>供需分析报告</option>
+                            <option>研学效果评估报告</option>
+                            <option>红色文旅趋势报告</option>
+                            <option>场馆运营分析报告</option>
+                        </select>
+                    </div>
+                    <button class="bg-red-800 text-white px-4 py-2 rounded hover-bg-red-700">生成报告</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. 红色足迹·育人闭环（完整实现） -->
+        <div id="archive-page" class="page-content hidden bg-slate-50 text-gray-800">
+            <div class="container mx-auto px-4 py-8 pt-20">
+                <h1 class="text-3xl font-bold text-red-800 mb-6">红色足迹 · 育人闭环</h1>
+                
+                <!-- 红色足迹地图 -->
+                <div class="bg-white p-6 rounded shadow mb-8">
+                    <h2 class="text-xl font-bold mb-4">全国红色足迹地图</h2>
+                    <div class="w-full h-[400px] border rounded flex items-center justify-center">
+                        <!-- 【需替换为真实可视化图】全国红色足迹地图 - 建议尺寸：1000x400px（需基于真实红色场馆数据生成的地图） -->
+                        <img src="https://picsum.photos/1000/400?9" alt="全国红色足迹地图" class="w-full h-full object-cover rounded img-hover need-upload">
+                    </div>
+                </div>
+
+                <!-- 育人闭环流程（无图片需替换） -->
+                <div class="bg-white p-6 rounded shadow mb-8">
+                    <h2 class="text-xl font-bold mb-4">红色育人闭环流程</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="border rounded p-4 text-center card-3d h-40 relative">
+                            <div class="front w-full h-full flex items-center justify-center">
+                                <div>
+                                    <h3 class="font-bold text-red-800">1. 研学体验</h3>
+                                    <p class="text-sm mt-2">沉浸式红色场景体验</p>
+                                </div>
+                            </div>
+                            <div class="back w-full h-full flex items-center justify-center">
+                                <p class="text-sm text-red-800">XR/实地研学，感知红色文化</p>
+                            </div>
+                        </div>
+                        <div class="border rounded p-4 text-center card-3d h-40 relative">
+                            <div class="front w-full h-full flex items-center justify-center">
+                                <div>
+                                    <h3 class="font-bold text-red-800">2. 知识考核</h3>
+                                    <p class="text-sm mt-2">红色知识在线答题</p>
+                                </div>
+                            </div>
+                            <div class="back w-full h-full flex items-center justify-center">
+                                <p class="text-sm text-red-800">即时评分，巩固知识点</p>
+                            </div>
+                        </div>
+                        <div class="border rounded p-4 text-center card-3d h-40 relative">
+                            <div class="front w-full h-full flex items-center justify-center">
+                                <div>
+                                    <h3 class="font-bold text-red-800">3. 心得分享</h3>
+                                    <p class="text-sm mt-2">线上线下分享感悟</p>
+                                </div>
+                            </div>
+                            <div class="back w-full h-full flex items-center justify-center">
+                                <p class="text-sm text-red-800">生成专属研学心得报告</p>
+                            </div>
+                        </div>
+                        <div class="border rounded p-4 text-center card-3d h-40 relative">
+                            <div class="front w-full h-full flex items-center justify-center">
+                                <div>
+                                    <h3 class="font-bold text-red-800">4. 成果认证</h3>
+                                    <p class="text-sm mt-2">颁发电子研学证书</p>
+                                </div>
+                            </div>
+                            <div class="back w-full h-full flex items-center justify-center">
+                                <p class="text-sm text-red-800">纳入综合素质评价</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 研学成果统计（ECharts渲染，无需替换图片） -->
+                <div class="bg-white p-6 rounded shadow">
+                    <h2 class="text-xl font-bold mb-4">研学成果统计</h2>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">筛选条件：学校/企业</label>
+                        <select class="w-full p-2 border border-gray-300 rounded">
+                            <option>全部</option>
+                            <option>中小学</option>
+                            <option>高校</option>
+                            <option>企业</option>
+                        </select>
+                    </div>
+                    <div id="achievement-chart" class="w-full h-[300px] border rounded"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 功能实现 -->
+    <script>
+        // 1. 页面切换 + 导航红杠同步
+        function switchPage(pageId) {
+            // 隐藏所有页面
+            document.querySelectorAll('.page-content').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('block');
+            });
+            // 显示目标页面
+            document.getElementById(`${pageId}-page`).classList.remove('hidden');
+            document.getElementById(`${pageId}-page`).classList.add('block');
+            
+            // 更新页面标题
+            const titleMap = {
+                index: '星火·征途 - 红色文旅数字化赋能平台',
+                match: '智能匹配 · 精准定制 - 星火·征途',
+                saas: '供给端SaaS工作台 - 星火·征途',
+                xr: 'XR体验 · 沉浸种草 - 星火·征途',
+                data: '产业数据 · 红色智库 - 星火·征途',
+                archive: '红色足迹 · 育人闭环 - 星火·征途'
+            };
+            document.getElementById('main-page-title').textContent = titleMap[pageId];
+            
+            // 导航红杠同步
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('nav-active');
+            });
+            event.target.classList.add('nav-active');
+
+            // 初始化ECharts（仅数据页）
+            if (pageId === 'data') initCharts();
+            if (pageId === 'archive') initArchiveChart();
+        }
+
+        // 2. 智能匹配页 - 实时更新套餐
+        function updatePackage() {
+            const userType = document.getElementById('user-type').value;
+            const area = document.getElementById('activity-area').value;
+            const people = document.getElementById('people-count-input').value;
+            const duration = document.getElementById('duration').value;
+            const budget = document.getElementById('budget').value;
+            const coreDemand = document.getElementById('core-demand').value;
+
+            // 简单校验
+            if (userType && area && people && duration && budget && coreDemand) {
+                // 模拟套餐数据
+                document.getElementById('package-name').textContent = `${area === 'jiangxi' ? '井冈山' : '长征'}研学定制套餐`;
+                document.getElementById('package-desc').textContent = `适配${userType === 'school' ? '中小学' : '企业'}，${people}人/${duration === '4' ? '全天' : '半天'}，含${coreDemand.substring(0, 10)}...`;
+                document.getElementById('package-price').textContent = `预估费用：¥${(budget * people).toLocaleString()}`;
+                document.getElementById('match-rate').textContent = `${Math.floor(Math.random() * 20 + 80)}%`;
+                document.getElementById('gen-time').textContent = (Math.random() * 3).toFixed(1);
+                document.getElementById('gen-pdf').disabled = false;
+            } else {
+                document.getElementById('package-name').textContent = '未匹配到套餐';
+                document.getElementById('package-desc').textContent = '请填写左侧需求信息，实时生成匹配方案';
+                document.getElementById('package-price').textContent = '预估费用：--';
+                document.getElementById('match-rate').textContent = '0%';
+                document.getElementById('gen-time').textContent = '0';
+                document.getElementById('gen-pdf').disabled = true;
+            }
+        }
+
+        // 3. XR体验页 - 缩小视频
+        function shrinkVideo() {
+            document.getElementById('xr-video-container').style.display = 'none';
+            document.getElementById('video-float').style.display = 'block';
+        }
+
+        // 4. XR体验页 - 填充日期
+        function fillDate() {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+            const d = String(today.getDate() + 1).padStart(2, '0');
+            document.getElementById('reserve-date').value = `${y}-${m}-${d}`;
+        }
+
+        // 5. 产业数据页 - 初始化ECharts
+        function initCharts() {
+            // 热力地图（模拟数据）
+            const heatChart = echarts.init(document.getElementById('heat-map-container'));
+            heatChart.setOption({
+                title: { text: '全国红色文旅供需热力分布' },
+                tooltip: { trigger: 'item' },
+                visualMap: {
+                    min: 0, max: 100, left: 'left', top: 'bottom',
+                    text: ['高需求', '低需求'], calculable: true
+                },
+                series: [{
+                    name: '供需指数', type: 'map', mapType: 'china',
+                    roam: false, label: { show: true },
+                    data: [
+                        { name: '北京', value: 88 },
+                        { name: '上海', value: 82 },
+                        { name: '广东', value: 90 },
+                        { name: '江西', value: 95 },
+                        { name: '贵州', value: 85 },
+                        { name: '四川', value: 80 },
+                        { name: '陕西', value: 87 },
+                        { name: '浙江', value: 78 }
+                    ]
+                }]
+            });
+
+            // 柱状图（模拟数据）
+            const barChart = echarts.init(document.getElementById('bar-chart'));
+            barChart.setOption({
+                title: { text: '不同研学方式效果对比' },
+                xAxis: { type: 'category', data: ['传统讲解', 'XR体验', '实地研学', '混合模式'] },
+                yAxis: { type: 'value', name: '满意度(%)' },
+                series: [{
+                    name: '学生满意度', type: 'bar',
+                    data: [75, 92, 88, 95]
+                }, {
+                    name: '记忆留存率', type: 'bar',
+                    data: [60, 85, 78, 90]
+                }]
+            });
+
+            // 响应窗口大小变化
+            window.addEventListener('resize', () => {
+                heatChart.resize();
+                barChart.resize();
+            });
+        }
+
+        // 6. 红色足迹页 - 初始化图表
+        function initArchiveChart() {
+            const chart = echarts.init(document.getElementById('achievement-chart'));
+            chart.setOption({
+                title: { text: '2024年研学成果统计' },
+                xAxis: { type: 'category', data: ['1月', '2月', '3月', '4月', '5月', '6月'] },
+                yAxis: { type: 'value', name: '参与人次' },
+                series: [{
+                    name: '中小学', type: 'line', data: [1200, 1500, 1800, 2100, 2500, 3000]
+                }, {
+                    name: '企业', type: 'line', data: [800, 950, 1100, 1300, 1500, 1800]
+                }]
+            });
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        // 7. 时间轴更新地图
+        function updateMap(year) {
+            document.getElementById('time-axis-text').textContent = year;
+            document.getElementById('time-value').textContent = year;
+            // 模拟数据更新（简化）
+            if (document.getElementById('data-page').classList.contains('block')) {
+                initCharts();
+            }
+        }
+
+        // 8. 初始化粒子动画（首页）
+        window.onload = function() {
+            particlesJS('particles-js', {
+                particles: {
+                    number: { value: 80, density: { enable: true, value_area: 800 } },
+                    color: { value: '#FFE4B5' },
+                    shape: { type: 'circle' },
+                    opacity: { value: 0.5, random: true },
+                    size: { value: 3, random: true },
+                    line_linked: { enable: true, distance: 150, color: '#FFE4B5', opacity: 0.2, width: 1 },
+                    move: { enable: true, speed: 1, direction: 'none', random: true, straight: false, out_mode: 'out', bounce: false }
+                },
+                interactivity: {
+                    detect_on: 'canvas',
+                    events: {
+                        onhover: { enable: true, mode: 'grab' },
+                        onclick: { enable: true, mode: 'push' },
+                        resize: true
+                    },
+                    modes: {
+                        grab: { distance: 140, line_linked: { opacity: 0.8 } },
+                        push: { particles_nb: 4 }
+                    }
+                },
+                retina_detect: true
+            });
+        };
+    </script>
+</body>
+</html>
